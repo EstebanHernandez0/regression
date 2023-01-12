@@ -5,30 +5,53 @@ from env import get_connection
 
 
 
-def get_telco_data():
-    file_csv = 'telco_churn.csv'
+def acquire_zillow():
+    '''
+    This function checks to see if zillow.csv already exists, 
+    if it does not, one is created
+    '''
+    #check to see if telco_churn.csv already exist
+    if os.path.isfile('zillow.csv'):
+        df = pd.read_csv('zillow.csv', index_col=0)
     
-    if os.path.isfile(file_csv):
-        return pd.read_csv(file_csv)
-    else: telco_churn=pd.read_sql('''SELECT * FROM contract_types
-    JOIN customers USING (contract_type_id)
-    JOIN internet_service_types USING (internet_service_type_id)
-    JOIN payment_types USING (payment_type_id)''', telco_connnect)
-    telco_churn.to_csv('telco_churn.csv',index=False)
-    return telco_churn
-
-
-def get_telco_data():
-    
-    if os.path.isfile('telco.csv'):
-        
-        # If csv file exists read in data from csv file.
-        df = pd.read_csv('telco.csv', index_col=0)
-        
     else:
-        
-        df = new_telco_data()
 
-        df.to_csv('telco.csv')
-        
+        #creates new csv if one does not already exist
+        df = get_zillow_data()
+        df.to_csv('zillow.csv')
+
     return df
+
+def prep_zillow(df):
+    '''
+    This function takes in the zillow df
+    then the data is cleaned and returned
+    '''
+    #change column names to be more readable
+    df = df.rename(columns={'bedroomcnt':'bedrooms', 
+                          'bathroomcnt':'bathrooms', 
+                          'calculatedfinishedsquarefeet':'area',
+                          'taxvaluedollarcnt':'tax_value', 
+                          'yearbuilt':'year_built'})
+
+    #drop null values- at most there were 9000 nulls (this is only 0.5% of 2.1M)
+    df = df.dropna()
+
+    #drop duplicates
+    df.drop_duplicates(inplace=True)
+    
+    # train/validate/test split
+    train_validate, test = train_test_split(df, test_size=.2, random_state=123)
+    train, validate = train_test_split(train_validate, test_size=.3, random_state=123)
+    
+    return train, validate, test
+
+
+def wrangle_zillow():
+    '''
+    This function uses the acquire and prepare functions
+    and returns the split/cleaned dataframe
+    '''
+    train, validate, test = prep_zillow(acquire_zillow())
+    
+    return train, validate, test
